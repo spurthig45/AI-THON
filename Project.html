@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>EduCode Platform</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    margin: 0; padding: 0;
+    display: flex;
+    height: 100vh;
+    flex-direction: column;
+  }
+  header {
+    background: #2c3e50;
+    color: white;
+    padding: 1em;
+    text-align: center;
+  }
+  #container {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+  #editor-panel, #info-panel {
+    flex: 1;
+    padding: 1em;
+    box-sizing: border-box;
+  }
+  #editor-panel {
+    border-right: 1px solid #ddd;
+    display: flex;
+    flex-direction: column;
+  }
+  textarea {
+    flex: 1;
+    font-family: monospace;
+    font-size: 16px;
+    padding: 10px;
+    resize: none;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+  }
+  button {
+    margin-top: 10px;
+    padding: 10px;
+    background: #2980b9;
+    color: white;
+    border: none;
+    cursor: pointer;
+    border-radius: 5px;
+    font-weight: bold;
+  }
+  button:hover {
+    background: #3498db;
+  }
+  #exercise, #errors, #suggestions, #tutorial, #output {
+    margin-bottom: 1em;
+  }
+  #errors {
+    color: #e74c3c;
+    white-space: pre-wrap;
+  }
+  #suggestions {
+    color: #d35400;
+    white-space: pre-wrap;
+  }
+  #tutorial {
+    background: #ecf0f1;
+    border-radius: 5px;
+    padding: 10px;
+    max-height: 150px;
+    overflow-y: auto;
+  }
+  #output {
+    background: #f0f8ff;
+    border-radius: 5px;
+    padding: 10px;
+    white-space: pre-wrap;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>EduCode: Interactive Coding Education Platform</h1>
+</header>
+
+<div id="container">
+  <div id="editor-panel">
+    <div id="exercise"><strong>Exercise:</strong> <span id="exercise-text"></span></div>
+    <textarea id="code-editor" spellcheck="false">// Write your JavaScript code here...</textarea>
+    <button id="analyze-btn">Analyze Code</button>
+    <button id="run-btn">Run Code</button>
+  </div>
+  <div id="info-panel">
+    <div id="errors"><strong>Errors:</strong><br><span id="errors-text">None</span></div>
+    <div id="suggestions"><strong>Suggestions:</strong><br><span id="suggestions-text">No suggestions</span></div>
+    <div id="tutorial"><strong>Tutorial:</strong><br><span id="tutorial-text"></span></div>
+    <div id="output"><strong>Output:</strong><br><pre id="output-text"></pre></div>
+  </div>
+</div>
+
+<script>
+  // Simple exercise generation
+  const exercises = [
+    {
+      text: "Write a function named 'add' that takes two numbers and returns their sum.",
+      starterCode: `function add(a, b) {\n  // your code here\n}`,
+      tutorialSteps: [
+        "Step 1: Define a function named 'add' with parameters a and b.",
+        "Step 2: Inside the function, return the sum of a and b.",
+        "Step 3: Make sure to use the return keyword."
+      ]
+    },
+    {
+      text: "Write a function named 'isEven' that returns true if a number is even, false otherwise.",
+      starterCode: `function isEven(num) {\n  // your code here\n}`,
+      tutorialSteps: [
+        "Step 1: Define the function 'isEven' with one parameter 'num'.",
+        "Step 2: Use the modulus operator (%) to check if num is divisible by 2.",
+        "Step 3: Return true if divisible by 2, else return false."
+      ]
+    },
+    {
+      text: "Write a function named 'factorial' that returns the factorial of a number.",
+      starterCode: `function factorial(n) {\n  // your code here\n}`,
+      tutorialSteps: [
+        "Step 1: Define the function 'factorial' with parameter 'n'.",
+        "Step 2: If n is 0 or 1, return 1.",
+        "Step 3: Otherwise, return n multiplied by factorial of n-1 (recursive call)."
+      ]
+    }
+  ];
+
+  let currentExerciseIndex = 0;
+  let tutorialStep = 0;
+
+  const exerciseText = document.getElementById("exercise-text");
+  const codeEditor = document.getElementById("code-editor");
+  const analyzeBtn = document.getElementById("analyze-btn");
+  const runBtn = document.getElementById("run-btn");
+  const errorsText = document.getElementById("errors-text");
+  const suggestionsText = document.getElementById("suggestions-text");
+  const tutorialText = document.getElementById("tutorial-text");
+  const outputText = document.getElementById("output-text");
+
+  // Load exercise and tutorial
+  function loadExercise(index) {
+    const ex = exercises[index];
+    exerciseText.textContent = ex.text;
+    codeEditor.value = ex.starterCode;
+    tutorialStep = 0;
+    tutorialText.textContent = ex.tutorialSteps[tutorialStep];
+    errorsText.textContent = "None";
+    suggestionsText.textContent = "No suggestions";
+    outputText.textContent = "";
+  }
+
+  // Basic JS syntax checker (try/catch with eval)
+  function analyzeCode() {
+    const code = codeEditor.value;
+    errorsText.textContent = "None";
+    suggestionsText.textContent = "No suggestions";
+    outputText.textContent = "";
+
+    // Try to parse and detect syntax errors
+    try {
+      new Function(code);
+      errorsText.textContent = "No syntax errors found!";
+      suggestionsText.textContent = getDebuggingSuggestions(code);
+      nextTutorialStep();
+    } catch (e) {
+      errorsText.textContent = e.message;
+      suggestionsText.textContent = generateSuggestionsFromError(e.message);
+    }
+  }
+
+  // Generate simple debugging suggestions based on error message
+  function generateSuggestionsFromError(errorMsg) {
+    let suggestions = [];
+    if (errorMsg.includes("Unexpected token")) {
+      suggestions.push("Check for missing or extra characters like commas, parentheses, or braces.");
+    }
+    if (errorMsg.includes("is not defined")) {
+      suggestions.push("Make sure all variables and functions are spelled correctly and defined before use.");
+    }
+    if (errorMsg.includes("Unexpected end of input")) {
+      suggestions.push("You might have an unclosed bracket, brace, or parenthesis.");
+    }
+    if (suggestions.length === 0) {
+      suggestions.push("Review your syntax carefully.");
+    }
+    return suggestions.join("\n");
+  }
+
+  // Basic heuristic suggestions even if no error detected
+  function getDebuggingSuggestions(code) {
+    const suggestions = [];
+    if (!code.includes("return")) {
+      suggestions.push("Remember to use the 'return' statement if your function should return a value.");
+    }
+    if (code.includes("==")) {
+      suggestions.push("Consider using '===' instead of '==' for strict equality checking.");
+    }
+    return suggestions.length > 0 ? suggestions.join("\n") : "No suggestions.";
+  }
+
+  // Show next tutorial step if available
+  function nextTutorialStep() {
+    const steps = exercises[currentExerciseIndex].tutorialSteps;
+    if (tutorialStep < steps.length - 1) {
+      tutorialStep++;
+      tutorialText.textContent = steps[tutorialStep];
+    }
+  }
+
+  // Run user's code safely and capture output
+  function runCode() {
+    outputText.textContent = "";
+    try {
+      // Redirect console.log to capture output
+      let output = "";
+      const originalConsoleLog = console.log;
+      console.log = function(...args) {
+        output += args.join(" ") + "\n";
+        originalConsoleLog.apply(console, args);
+      };
+
+      // Run code in a Function constructor for scope isolation
+      const userCode = codeEditor.value + "\n\n" +
+        "// Example tests for your function\n" +
+        getTestCodeForExercise(currentExerciseIndex);
+
+      new Function(userCode)();
+
+      console.log = originalConsoleLog; // Restore
+
+      outputText.textContent = output || "Code ran successfully with no output.";
+    } catch (err) {
+      outputText.textContent = "Runtime error: " + err.message;
+    }
+  }
+
+  // Test code snippets for exercises
+  function getTestCodeForExercise(index) {
+    switch(index) {
+      case 0:
+        return `
+          console.log(add(2,3));  // Expected output: 5
+          console.log(add(-1,1)); // Expected output: 0
+        `;
+      case 1:
+        return `
+          console.log(isEven(4)); // Expected output: true
+          console.log(isEven(3)); // Expected output: false
+        `;
+      case 2:
+        return `
+          console.log(factorial(5)); // Expected output: 120
+          console.log(factorial(0)); // Expected output: 1
+        `;
+      default:
+        return "";
+    }
+  }
+
+  // Initialize
+  loadExercise(currentExerciseIndex);
+
+  // Event Listeners
+  analyzeBtn.addEventListener("click", analyzeCode);
+  runBtn.addEventListener("click", runCode);
+
+</script>
+
+</body>
+</html>
